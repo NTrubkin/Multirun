@@ -37,3 +37,11 @@ sysinfo.txt
 *.apk
 *.unitypackage
 
+# Custom
+.idea/
+Assets/Plugins/
+Assets/Plugins.meta
+.vscode/
+.directory
+
+
