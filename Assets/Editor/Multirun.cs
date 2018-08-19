@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEditor;
 using UnityEngine;
@@ -33,7 +32,7 @@ public class Multirun : EditorWindow
     private const string PortLabel = "Port";
     private const string BuildConfigLabel = "Build Configuration";
     private const string CountOfScenesLabel = "Count of Scenes";
-    private const string SceneLabel = "Scene #{0}";
+    private const string SceneLabel = "Scene #";
     private const string OsLabel = "Operation System";
 
     // Buttons
@@ -42,43 +41,48 @@ public class Multirun : EditorWindow
 
     #endregion
 
+    #region Error Messages
+
+    private const string TagErrorMessage = "Tag not found and ArgumentHandler!";
+    private const string ArgHandlerErrorMessage = "ArgumentHandler not found!";
+    private const string OsErrorMessage = "Unknown OS \"{0}\"";
+
+    #endregion
+
 
     private Vector2 scrollPos;                       // Для вертикальной полосы
     [SerializeField] private SceneAsset[] scenesObj; // Сами сцены 
-    [SerializeField] private List<SceneAsset> sceneAssets = new List<SceneAsset>();
 
-    private int maxCountScenes = 10;              // Максимальное количество сцен для редактирования 
-    private const int minCountScenes = 1;         // Минимальное количество сцен 
+    private const int MaxCountScenes = 10; // Максимальное количество сцен для редактирования 
+    private const int MinCountScenes = 1;         // Минимальное количество сцен 
     [SerializeField] private int countScenes = 1; // Для куска кода, который следит за изменением количества сцен
     [SerializeField] private int oldCountScene = 0;
     [SerializeField] private int countStartScenes = 1;       // Количество сцен требуемые для разового запуска 
-    private const int maxCountStartScenes = 5;               // максимальное количество сцен для запуска
-    private const int minCountStartScenes = 1;               // Минимальное количество сцен для запуска
+    private const int MaxCountStartScenes = 5;               // максимальное количество сцен для запуска
+    private const int MinCountStartScenes = 1;               // Минимальное количество сцен для запуска
     [SerializeField] private string ipAddress = "127.0.0.1"; // Сервер, база
     [SerializeField] private int port = 7777;
-    [SerializeField] private int serverPort = 7777;
 
     private string buildName; // Имя окончательного билда
     [SerializeField] private string tagName = "Handler";
 
     [SerializeField] private string pathBuild = "Build\\"; // Путь окончательного билда (В windows обратный \) редактировать в unity
 
-    private const string pathScene = "Assets/Scenes/"; //Путь до место расположения самих сцен 
+    private const string PathScene = "Assets/Scenes/"; //Путь до место расположения самих сцен 
     private string nameExtension;                      //доп переменная для определения расширения
     [SerializeField] private string[] scenes;          //Полное имя сцен
 
-    [SerializeField] private bool isBuild;  //Проверка на выбранные сцены
     [SerializeField] private bool isServer; //Выбор запуска сервера или только клиента false - только клиенты
     [SerializeField] private bool isConnect;
     [SerializeField] private bool isPlayUnity;
     [SerializeField] private bool isServerInUnity;
     [SerializeField] private bool isShowOptions;
     private bool isEnableServer;
-    private bool isCUS = false;
+    private bool isCus = false;
     private bool isError = false;
     [SerializeField] private GameObject obj;
     private ArgumentHandler handler;
-    public DefaultSystem defaultSystem = DefaultSystem.Windows;
+    [SerializeField] private DefaultSystem defaultSystem = DefaultSystem.Windows;
 
     [MenuItem("Window/Multirun")]
     public static void ShowWindow()
@@ -86,14 +90,14 @@ public class Multirun : EditorWindow
         GetWindow<Multirun>("Multirun");
     }
 
-    bool FindArgHandlerObj() //Поиск объекта с тегом, а также компонента ArgumentHandler
+    private bool FindArgHandlerObj() //Поиск объекта с тегом, а также компонента ArgumentHandler
     {
         if (!isError) //Проверка на повторный запуск скрипта, так как находится в OnGUI и межет быть вызван более 1 раза 
         {
             obj = GameObject.FindGameObjectWithTag(tagName); //Поиск объекта с тегом
             if (obj == null)                                 // Если объект не найден, то выдать исключение, в этом случае в debug log
             {
-                ShowError(0);
+                Debug.LogError(TagErrorMessage);
                 isError = true;
                 return false;
             }
@@ -101,7 +105,7 @@ public class Multirun : EditorWindow
 
             if (handler == null) //Обработчик исключений
             {
-                ShowError(1);
+                Debug.LogError(ArgHandlerErrorMessage);
                 isError = true;
                 return false;
             }
@@ -110,22 +114,7 @@ public class Multirun : EditorWindow
         else return false; //возвращает ложь,если была ранее выдана ошибка
     }
 
-    void ShowError(int exc) //Вывод сообщения
-    {
-        switch (exc)
-        {
-            case 0:
-                Debug.Log("Tag not found and ArgumentHandler!");
-                break;
-            case 1:
-                Debug.Log("ArgumentHandler not found!");
-                break;
-            default:
-                break;
-        }
-    }
-
-    void OnGUI()
+    private void OnGUI()
     {
         if (isServerInUnity && EditorApplication.isPlaying) //Поиск и запуск в редакторе Unity в качестве сервера
         {
@@ -135,18 +124,16 @@ public class Multirun : EditorWindow
                 {
                     handler.EditorEvent("server", ipAddress, port);
                     isEnableServer = false;
-                    //Debug.Log("SERVER STARTING!");
                 }
             }
         }
 
-        if (isCUS && EditorApplication.isPlaying) //Поиск и запуск в редакторе Unity в качестве клиента
+        if (isCus && EditorApplication.isPlaying) //Поиск и запуск в редакторе Unity в качестве клиента
         {
             if (FindArgHandlerObj()) //Обработчик исключений, делает независимым скрипт Multirun от ArgumentHandler
             {
-                isCUS = false;
+                isCus = false;
                 handler.EditorEvent("client", ipAddress, port);
-                //Debug.Log("CLIENT STARTING!");
             }
         }
 
@@ -156,7 +143,7 @@ public class Multirun : EditorWindow
         countStartScenes = EditorGUILayout.IntField(CountOfInstancesLabel, countStartScenes); //Количество экземпляров приложения
         isServer = EditorGUILayout.Toggle(ServerRunLabel, isServer);                          //Чекбокс на запуск сервера, написать чтобы при выборе 
         //Логика поведения чекбоксов, для запуска режима
-        if (countStartScenes != 1 && isServer == true)
+        if (countStartScenes != 1 && isServer)
         {
             isConnect = EditorGUILayout.Toggle(ClientRunLabel, isConnect); //чекбокс на автозапуск клиента
         }
@@ -195,30 +182,26 @@ public class Multirun : EditorWindow
             EditorGUILayout.LabelField(BuildConfigLabel);
 
             countScenes = EditorGUILayout.IntField(CountOfScenesLabel, countScenes);
-            if (countScenes > maxCountScenes) //Проверка на количество сцен
+            if (countScenes > MaxCountScenes) //Проверка на количество сцен
             {
-                countScenes = maxCountScenes;
+                countScenes = MaxCountScenes;
             }
-            else if (countScenes < minCountScenes)
+            else if (countScenes < MinCountScenes)
             {
-                countScenes = minCountScenes;
+                countScenes = MinCountScenes;
             }
             else
             {
                 if ((countScenes != oldCountScene)) //Проверка состояния изменения сцены
                 {
                     scenes = new string[countScenes]; //Выделить новый массив с новым количеством сцен
-                    //Debug.Log("count scenes: " + scenes.Length);
                     scenesObj = new SceneAsset[countScenes];
                     oldCountScene = countScenes; //Указываем новое значение для дальнейших проверок
                 }
 
                 for (int i = 0; i < countScenes; i++) //Отрисовываем и записываем значения полей в массив scenes
                 {
-                    scenesObj[i] =
-                        EditorGUILayout.ObjectField(string.Format(SceneLabel, i), scenesObj[i], typeof(SceneAsset),
-                                false) as
-                            SceneAsset;
+                    scenesObj[i] = EditorGUILayout.ObjectField(SceneLabel + i, scenesObj[i], typeof(SceneAsset), false) as SceneAsset;
                 }
             }
 
@@ -228,25 +211,25 @@ public class Multirun : EditorWindow
             EditorGUI.indentLevel = 0;
         }
 
-        if (countStartScenes < minCountStartScenes) //ограничения устанавливаемых сцен
+        if (countStartScenes < MinCountStartScenes) //ограничения устанавливаемых сцен
         {
-            countStartScenes = minCountStartScenes;
+            countStartScenes = MinCountStartScenes;
         }
-        else if (countStartScenes > maxCountStartScenes)
+        else if (countStartScenes > MaxCountStartScenes)
         {
-            countStartScenes = maxCountStartScenes;
+            countStartScenes = MaxCountStartScenes;
         }
 
         EditorGUILayout.Space();
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button(RunButtonLabel))
         {
-            Run(defaultSystem); //Запуск билда в режиме defaultSystem
+            Run(); //Запуск билда в режиме defaultSystem
         }
 
         if (GUILayout.Button(BuildRunButtonLabel))
         {
-            BuildAndRun(defaultSystem); //Компиляция билда и запуск в режиме defaultSystem
+            BuildAndRun(); //Компиляция билда и запуск в режиме defaultSystem
 
             // Костыль! После билда юнити забывает о том, что разметка перешла в горизонталь
             EditorGUILayout.BeginHorizontal();
@@ -256,42 +239,37 @@ public class Multirun : EditorWindow
         EditorGUILayout.EndScrollView(); //конец отрисовки полосы прокрутки
     }
 
-    private void Run(DefaultSystem system)
+    private void Run()
     {
         isError = false;
         isEnableServer = true;
-        //Debug.Log("path: " + pathBuild + buildName);
-        switch (system) //определение ОС
+        switch (defaultSystem) //определение ОС
         {
-            case DefaultSystem.Linux:           //Вызывается скрипт bash для выставления прав на запуск в linux в папке с проектом необходим скрипт npfs.sh так же с правиви исполнения 
-                Debug.Log("Select: GNU/Linux"); //только для UNIX!!!
-                Process chmod = new Process();
-
+            case DefaultSystem.Linux:
+                //Вызывается скрипт bash для выставления прав на запуск в linux в папке с проектом необходим скрипт npfs.sh так же с правиви исполнения 
+                var chmod = new Process();
                 chmod.StartInfo.FileName = "./npfs.sh"; //Установка имени исполняемого файла 
                 chmod.StartInfo.Arguments = buildName;  //Установка аргументов
                 chmod.Start();                          //запуск самого приложения в данном случае скрипта 
                 nameExtension = "";
                 break;
             case DefaultSystem.Windows:
-                Debug.Log("Select Windows"); //В окнах нет безопасности, поэтому нам пофигу 
                 nameExtension = ".exe";
                 break;
             default:
-                Debug.LogError("System error, not valid authorization data"); //Заглушка, вдруг что-то будет не то 
-                break;
+                throw new NotImplementedException(string.Format(OsErrorMessage, defaultSystem));
         }
 
-        Process proc = new Process();                    //Запуск самой программы
+        var proc = new Process();                    //Запуск самой программы
         proc.StartInfo.FileName = pathBuild + buildName; //Выбор билда и последующий запуск, сделать запуск по аргументам для сервера
 
-        for (int i = 0; i < countStartScenes; i++)
+        for (var i = 0; i < countStartScenes; i++)
         {
             if (isServer && (i == 0))
             {
                 proc.StartInfo.Arguments = "server " + port;
                 if (isServerInUnity)
                 {
-                    Debug.Log("Start server in Unity: " + "server");
                     EditorApplication.isPlaying = true; //Старт в unity
                 }
                 else proc.Start();
@@ -302,8 +280,7 @@ public class Multirun : EditorWindow
                 proc.StartInfo.Arguments = "client " + ipAddress + " " + port; //Установка аргументов
                 if (isPlayUnity && (i == countStartScenes - 1) && !isServerInUnity)
                 {
-                    isCUS = true;
-                    Debug.Log("Start client in Unity: " + "client " + ipAddress + " " + port);
+                    isCus = true;
                     EditorApplication.isPlaying = true;
                 }
                 else proc.Start();
@@ -314,7 +291,6 @@ public class Multirun : EditorWindow
                 proc.StartInfo.Arguments = "";
                 if (isPlayUnity && (i == countStartScenes - 1) && (!isServerInUnity))
                 {
-                    Debug.Log("Start client in Unity: " + "default");
                     EditorApplication.isPlaying = true;
                 }
                 else proc.Start();
@@ -325,48 +301,42 @@ public class Multirun : EditorWindow
     }
 
     // Returns true if build was success
-    private bool Build(DefaultSystem system)
+    private bool Build()
     {
-        Debug.Log(scenes.Length);
         buildName = Application.productName + nameExtension;
-        for (int i = 0; i < countScenes; i++)
+        for (var i = 0; i < countScenes; i++)
         {
             if (scenesObj[i] != null)
             {
-                scenes[i] = pathScene + scenesObj[i].name + ".unity";
+                scenes[i] = PathScene + scenesObj[i].name + ".unity";
             }
             else
             {
-                Debug.Log("scene #" + i + " is NULL");
-                Debug.LogError("Build stop! scene is NULL");
+                Debug.LogError("Build stop! scene#" + i + " is NULL");
                 return false;
                 // todo доработать скрипт, чтобы можно было указывать свой путь к сценам и чтоб не было ошибок при добавление из другой папки 
             }
         }
 
         //Билд проекта
-        BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions();
+        var buildPlayerOptions = new BuildPlayerOptions();
         buildPlayerOptions.scenes = new string[countScenes]; //Создаем массив с количеством сцен
-        for (int i = 0; i < countScenes; i++)                //Заполняем имена сцен и добавляем все в buildPlayerOptions.scenes 
+        for (var i = 0; i < countScenes; i++)                //Заполняем имена сцен и добавляем все в buildPlayerOptions.scenes 
         {
-            Debug.Log("Scene: count - " + i + " name - " + scenes[i]);
             buildPlayerOptions.scenes[i] = scenes[i]; //Собственно добавляем 
         }
 
         buildPlayerOptions.locationPathName = pathBuild + buildName; //Путь до билда
-        switch (system)                                              //определение ОС
+        switch (defaultSystem)                                              //определение ОС
         {
             case DefaultSystem.Linux: //Команды для компиляции в GNU/LINUX
-                Debug.Log("Select: GNU/Linux");
                 buildPlayerOptions.target = BuildTarget.StandaloneLinux64; //Компилировать по GNU/Linux
                 break;
             case DefaultSystem.Windows: //В окнах
-                Debug.Log("Select Windows");
                 buildPlayerOptions.target = BuildTarget.StandaloneWindows; //Windows
                 break;
             default:
-                Debug.LogError("System error, not valid authorization data");
-                return false;
+                throw new NotImplementedException(string.Format(OsErrorMessage, defaultSystem));
         }
 
         buildPlayerOptions.options = BuildOptions.None;
@@ -374,8 +344,14 @@ public class Multirun : EditorWindow
         return true;
     }
 
-    private void BuildAndRun(DefaultSystem system)
+    private void BuildAndRun()
     {
-        if (Build(system)) Run(system);
+        if (Build()) Run();
+    }
+
+    private void ShowRunReport()
+    {
+        // todo implement
+        throw new NotImplementedException("not implemented yet");
     }
 }

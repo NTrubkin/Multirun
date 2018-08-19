@@ -4,16 +4,15 @@ using UnityEngine.Networking;
 
 public class ArgumentHandler : MonoBehaviour
 {
+    // todo решить вопрос с синглтоном
     public static ArgumentHandler singleton;
     private int countArgs;
     private int port = 7777;
     private string args;
     private string ip = "127.0.0.1";
-
     private bool isStartInUnity = false;
 
-    // Use this for initialization
-    void Start()
+    private void Start()
     {
         countArgs = Environment.GetCommandLineArgs().Length;
         if (countArgs != 1)
@@ -38,63 +37,64 @@ public class ArgumentHandler : MonoBehaviour
                     Connect(ip, port);
                     break;
                 default:
-                    break;
+                    throw new ArgumentException("Wrong argument " + Environment.GetCommandLineArgs()[1]);
             }
         }
     }
 
-    int ConvertStrToInt(string str)
+    private static int ConvertStrToInt(string str)
     {
         return Convert.ToInt32(str);
     }
 
-    void Connect(string ip, int port)
+    private static void Connect(string ip, int port)
     {
         SetIpAddr(ip);
         SetPort(port);
-        try
+        
+        if (NetworkManager.singleton == null)
+        {
+            Debug.LogError("NetworkManager not found");   
+        }
+        else
         {
             NetworkManager.singleton.StartClient();
         }
-        catch
-        {
-            Debug.Log("Start client stop! NetworkManager not fond");
-        }
     }
 
-    void SetIpAddr(string ip)
-    {
-        try
+    private static void SetIpAddr(string ip)
+    {        
+        if (NetworkManager.singleton == null)
+        {
+            Debug.LogError("NetworkManager not found");   
+        }
+        else
         {
             NetworkManager.singleton.networkAddress = ip;
         }
-        catch
-        {
-            Debug.Log("Error set ip! NetworkManager not fond");
-        }
     }
 
-    void SetPort(int port)
+    private static void SetPort(int port)
     {
-        try
+        if (NetworkManager.singleton == null)
+        {
+            Debug.LogError("NetworkManager not found");   
+        }
+        else
         {
             NetworkManager.singleton.networkPort = port;
         }
-        catch
-        {
-            Debug.Log("Error set port! NetworkManager not fond");
-        }
     }
 
-    void StartHost()
+    private static void StartHost()
     {
-        try
+        if (NetworkManager.singleton == null)
+        {
+            Debug.LogError("NetworkManager not found");   
+        }
+        else
         {
             NetworkManager.singleton.StartHost();
-        }
-        catch
-        {
-            Debug.Log("Start host stop! NetworkManager not fond");
         }
     }
 
@@ -106,24 +106,23 @@ public class ArgumentHandler : MonoBehaviour
         isStartInUnity = true;
     }
 
-    void Update()
+    private void Update()
     {
-        if (isStartInUnity)
+        if (!isStartInUnity) return;
+        
+        switch (args)
         {
-            switch (args)
-            {
-                case "server":
-                    SetPort(port);
-                    StartHost();
-                    break;
-                case "client":
-                    Connect(ip, port);
-                    break;
-                default:
-                    break;
-            }
-
-            isStartInUnity = false;
+            case "server":
+                SetPort(port);
+                StartHost();
+                break;
+            case "client":
+                Connect(ip, port);
+                break;
+            default:
+                throw new ArgumentException("Wrong argument " + args);
         }
+
+        isStartInUnity = false;
     }
 }
