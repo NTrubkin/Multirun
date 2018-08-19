@@ -1,7 +1,7 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System;
 using UnityEngine;
 using UnityEngine.Networking;
+
 public class ArgumentHandler : MonoBehaviour
 {
     public static ArgumentHandler singleton;
@@ -9,14 +9,16 @@ public class ArgumentHandler : MonoBehaviour
     private int port = 7777;
     private string args;
     private string ip = "127.0.0.1";
+
     private bool isStartInUnity = false;
+
     // Use this for initialization
     void Start()
     {
-        countArgs = System.Environment.GetCommandLineArgs().Length;
+        countArgs = Environment.GetCommandLineArgs().Length;
         if (countArgs != 1)
         {
-            switch (System.Environment.GetCommandLineArgs()[1])
+            switch (Environment.GetCommandLineArgs()[1])
             {
                 case "server":
                     if (countArgs == 2)
@@ -25,13 +27,14 @@ public class ArgumentHandler : MonoBehaviour
                     }
                     else
                     {
-                        SetPort(ConvertStrToInt(System.Environment.GetCommandLineArgs()[2]));
+                        SetPort(ConvertStrToInt(Environment.GetCommandLineArgs()[2]));
                     }
+
                     StartHost();
                     break;
                 case "client":
-                    ip = System.Environment.GetCommandLineArgs()[2];
-                    port = ConvertStrToInt(System.Environment.GetCommandLineArgs()[3]);
+                    ip = Environment.GetCommandLineArgs()[2];
+                    port = ConvertStrToInt(Environment.GetCommandLineArgs()[3]);
                     Connect(ip, port);
                     break;
                 default:
@@ -39,10 +42,12 @@ public class ArgumentHandler : MonoBehaviour
             }
         }
     }
+
     int ConvertStrToInt(string str)
     {
-        return System.Convert.ToInt32(str);
+        return Convert.ToInt32(str);
     }
+
     void Connect(string ip, int port)
     {
         SetIpAddr(ip);
@@ -56,6 +61,7 @@ public class ArgumentHandler : MonoBehaviour
             Debug.Log("Start client stop! NetworkManager not fond");
         }
     }
+
     void SetIpAddr(string ip)
     {
         try
@@ -67,6 +73,7 @@ public class ArgumentHandler : MonoBehaviour
             Debug.Log("Error set ip! NetworkManager not fond");
         }
     }
+
     void SetPort(int port)
     {
         try
@@ -78,6 +85,7 @@ public class ArgumentHandler : MonoBehaviour
             Debug.Log("Error set port! NetworkManager not fond");
         }
     }
+
     void StartHost()
     {
         try
@@ -89,6 +97,7 @@ public class ArgumentHandler : MonoBehaviour
             Debug.Log("Start host stop! NetworkManager not fond");
         }
     }
+
     public void EditorEvent(string args, string ip, int port)
     {
         this.args = args;
@@ -96,6 +105,7 @@ public class ArgumentHandler : MonoBehaviour
         this.port = port;
         isStartInUnity = true;
     }
+
     void Update()
     {
         if (isStartInUnity)
@@ -112,6 +122,7 @@ public class ArgumentHandler : MonoBehaviour
                 default:
                     break;
             }
+
             isStartInUnity = false;
         }
     }
