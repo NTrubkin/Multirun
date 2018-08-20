@@ -26,14 +26,14 @@ public class ArgumentHandler : MonoBehaviour
                     }
                     else
                     {
-                        SetPort(ConvertStrToInt(Environment.GetCommandLineArgs()[2]));
+                        SetPort(Convert.ToInt32(Environment.GetCommandLineArgs()[2]));
                     }
 
                     StartHost();
                     break;
                 case "client":
                     ip = Environment.GetCommandLineArgs()[2];
-                    port = ConvertStrToInt(Environment.GetCommandLineArgs()[3]);
+                    port = Convert.ToInt32(Environment.GetCommandLineArgs()[3]);
                     Connect(ip, port);
                     break;
                 default:
@@ -42,74 +42,10 @@ public class ArgumentHandler : MonoBehaviour
         }
     }
 
-    private static int ConvertStrToInt(string str)
-    {
-        return Convert.ToInt32(str);
-    }
-
-    private static void Connect(string ip, int port)
-    {
-        SetIpAddr(ip);
-        SetPort(port);
-        
-        if (NetworkManager.singleton == null)
-        {
-            Debug.LogError("NetworkManager not found");   
-        }
-        else
-        {
-            NetworkManager.singleton.StartClient();
-        }
-    }
-
-    private static void SetIpAddr(string ip)
-    {        
-        if (NetworkManager.singleton == null)
-        {
-            Debug.LogError("NetworkManager not found");   
-        }
-        else
-        {
-            NetworkManager.singleton.networkAddress = ip;
-        }
-    }
-
-    private static void SetPort(int port)
-    {
-        if (NetworkManager.singleton == null)
-        {
-            Debug.LogError("NetworkManager not found");   
-        }
-        else
-        {
-            NetworkManager.singleton.networkPort = port;
-        }
-    }
-
-    private static void StartHost()
-    {
-        if (NetworkManager.singleton == null)
-        {
-            Debug.LogError("NetworkManager not found");   
-        }
-        else
-        {
-            NetworkManager.singleton.StartHost();
-        }
-    }
-
-    public void EditorEvent(string args, string ip, int port)
-    {
-        this.args = args;
-        this.ip = ip;
-        this.port = port;
-        isStartInUnity = true;
-    }
-
     private void Update()
     {
         if (!isStartInUnity) return;
-        
+
         switch (args)
         {
             case "server":
@@ -124,5 +60,64 @@ public class ArgumentHandler : MonoBehaviour
         }
 
         isStartInUnity = false;
+    }
+
+    private static void Connect(string ip, int port)
+    {
+        SetIpAddr(ip);
+        SetPort(port);
+
+        if (NetworkManager.singleton == null)
+        {
+            Debug.LogError("NetworkManager not found");
+        }
+        else
+        {
+            NetworkManager.singleton.StartClient();
+        }
+    }
+
+    private static void SetIpAddr(string ip)
+    {
+        if (NetworkManager.singleton == null)
+        {
+            Debug.LogError("NetworkManager not found");
+        }
+        else
+        {
+            NetworkManager.singleton.networkAddress = ip;
+        }
+    }
+
+    private static void SetPort(int port)
+    {
+        if (NetworkManager.singleton == null)
+        {
+            Debug.LogError("NetworkManager not found");
+        }
+        else
+        {
+            NetworkManager.singleton.networkPort = port;
+        }
+    }
+
+    private static void StartHost()
+    {
+        if (NetworkManager.singleton == null)
+        {
+            Debug.LogError("NetworkManager not found");
+        }
+        else
+        {
+            NetworkManager.singleton.StartHost();
+        }
+    }
+
+    public void EditorEvent(string args, string ip, int port)
+    {
+        this.args = args;
+        this.ip = ip;
+        this.port = port;
+        isStartInUnity = true;
     }
 }
