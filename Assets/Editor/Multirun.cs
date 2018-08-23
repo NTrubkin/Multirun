@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Diagnostics;
 using UnityEditor;
 using UnityEngine;
@@ -57,7 +58,7 @@ public class Multirun : EditorWindow
     private const int MaxCountOfInstances = 5;
     private const int MinCountOfInstances = 1;
 
-    private const string ScenesPath = "Assets/Scenes/"; //Путь до место расположения самих сцен 
+    //private const string ScenesPath = "Assets/Scenes/"; //Путь до место расположения самих сцен 
 
     #endregion
 
@@ -132,6 +133,18 @@ public class Multirun : EditorWindow
         else return false; // возвращает ложь,если была ранее выдана ошибка
     }
 
+    string FindScenelocation(string name)
+    {
+        string[] dirs = Directory.GetFiles("Assets", name, SearchOption.AllDirectories);
+
+        if (dirs.Length > 0)
+        {
+            return dirs[0];
+        }
+
+        return null;
+    }
+
     private void OnGUI()
     {
         // Поиск обработчика аргументов и запуск в редакторе Unity в качестве сервера
@@ -195,6 +208,8 @@ public class Multirun : EditorWindow
 
         EditorGUILayout.Space();
 
+        
+        
         // Отображение прочих опций
         showOtherConfigs = EditorGUILayout.Toggle(OtherConfigLabel, showOtherConfigs);
         if (showOtherConfigs)
@@ -230,7 +245,7 @@ public class Multirun : EditorWindow
                     scenes[i] = EditorGUILayout.ObjectField(SceneLabel + i, scenes[i], typeof(SceneAsset), false) as SceneAsset;
                 }
             }
-
+            
             system = (OperatingSystem) EditorGUILayout.EnumPopup(OsLabel, system); // Отрисовка селектора операционной системы
             buildPath = EditorGUILayout.TextField(BuildPathLabel, buildPath);
 
@@ -251,13 +266,14 @@ public class Multirun : EditorWindow
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button(RunButtonLabel))
         {
+            ShowRunReport(false);
             Run();
         }
 
         if (GUILayout.Button(BuildRunButtonLabel))
         {
+            ShowRunReport(true);
             BuildAndRun();
-
             // Костыль! После билда юнити забывает о том, что разметка перешла в горизонталь
             EditorGUILayout.BeginHorizontal();
         }
@@ -327,7 +343,6 @@ public class Multirun : EditorWindow
 
         // Тут был бип
     }
-
     // Returns true if build was success
     private bool Build()
     {
@@ -336,7 +351,7 @@ public class Multirun : EditorWindow
         {
             if (scenes[i] != null)
             {
-                sceneNames[i] = ScenesPath + scenes[i].name + ".unity";
+                sceneNames[i] = FindScenelocation(scenes[i].name + ".unity");
             }
             else
             {
@@ -378,9 +393,72 @@ public class Multirun : EditorWindow
         if (Build()) Run();
     }
 
-    private void ShowRunReport()
+    private void ShowRunReport(bool isBuild )
+    
     {
         // todo implement
-        throw new NotImplementedException("not implemented yet");
+        string info = "Запрошен ";
+        if (isBuild)
+        {
+            info += "Build and Start; ";
+        }
+        else
+        {
+            info += "Start; ";
+        }
+
+        info += "Система: ";
+        switch (system)
+        {
+            case OperatingSystem.Linux:
+                info += "GNU/Linux; ";
+                break;
+            case OperatingSystem.Windows:
+                info += "MS Windows; ";
+                break;
+            default:
+                throw new NotImplementedException(string.Format(OsErrorMessage, system));
+        }
+
+        info += "Путь к Build: " + buildPath + "; ";
+
+        if (runServer)
+        {
+            info += "сервер: 1";
+            if (runEditorAsServer)
+            {
+                info += " в редакторе";
+            }
+            info += "; ";
+            if (runClients)
+            {
+                info += "клиенты: " + (countOfInstances - 1)  ;
+                if (runInEditor && !runEditorAsServer)
+                {
+                    info += ", один в редакторе; ";
+                }
+                else info += "; ";
+            }
+            else
+            {
+                info += "Полноценный запуск: " + (countOfInstances - 1)+"; ";
+            }
+        }
+        else
+        {
+            info += "Полноценный запуск: " + countOfInstances;
+            if (runInEditor)
+            {
+                info += ", один в редакторе; ";
+            }
+            else info += "; ";
+        }
+        
+        if (runServer)
+        {
+            info += "ip: " + ip + "; port: " + port;
+        }
+        Debug.Log(info);
+        //throw new NotImplementedException("not implemented yet");
     }
 }
