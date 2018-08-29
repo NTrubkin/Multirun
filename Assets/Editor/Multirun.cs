@@ -16,6 +16,7 @@ public class Multirun : EditorWindow
     }
 
     // This labels are using for fields in Multirun tab in Unity Editor
+
     #region Labels
 
     // Main configs
@@ -44,7 +45,6 @@ public class Multirun : EditorWindow
 
     #region Error Messages
 
-    private const string TagErrorMessage = "Tag not found and ArgumentHandler!";
     private const string ArgHandlerErrorMessage = "ArgumentHandler not found!";
     private const string OsErrorMessage = "Unknown OS \"{0}\"";
 
@@ -58,11 +58,10 @@ public class Multirun : EditorWindow
     private const int MaxCountOfInstances = 5;
     private const int MinCountOfInstances = 1;
 
-    //private const string ScenesPath = "Assets/Scenes/"; //Путь до место расположения самих сцен 
-
     #endregion
 
     // Variables that are used for store data from visual fields in Multirun tab
+
     #region TabCache
 
     [SerializeField] private SceneAsset[] scenes;
@@ -95,8 +94,9 @@ public class Multirun : EditorWindow
     private string nameExtension; // todo упразднить (спрятать в методы)
     private bool isServerEnabled;
     private bool runEditorAsClient = false; // todo проверить правильность имени, если нет, вернуть имя isCus. Попытаться упразднить
+
     private bool isError = false;
-    private ArgumentHandler handler;
+    //private ArgumentHandler handler;
 
 
     [MenuItem("Window/Multirun")]
@@ -105,25 +105,14 @@ public class Multirun : EditorWindow
         GetWindow<Multirun>("Multirun");
     }
 
-    // Поиск объекта с тегом, а также компонента ArgumentHandler
+    // Поиск компонента ArgumentHandler
     private bool FindArgHandlerObj()
     {
-        //Проверка на повторный запуск скрипта, так как находится в OnGUI и межет быть вызван более 1 раза 
         if (!isError)
         {
-            var argHandlerObj = GameObject.FindGameObjectWithTag(argHandlerTag);
-            if (argHandlerObj == null)
+            //Поиск через singleton
+            if (ArgumentHandler.Singleton == null)
             {
-                // Если объект не найден, дальнейшая работа скрипта невозможна
-                Debug.LogError(TagErrorMessage);
-                isError = true;
-                return false;
-            }
-            else handler = argHandlerObj.GetComponentInParent<ArgumentHandler>();
-
-            if (handler == null)
-            {
-                // Если компонент не найден, дальнейшая работа скрипта невозможна
                 Debug.LogError(ArgHandlerErrorMessage);
                 isError = true;
                 return false;
@@ -154,7 +143,7 @@ public class Multirun : EditorWindow
             {
                 if (FindArgHandlerObj())
                 {
-                    handler.EditorEvent("server", ip, port);
+                    ArgumentHandler.Singleton.EditorEvent("server", ip, port);
                     isServerEnabled = false;
                 }
             }
@@ -166,7 +155,7 @@ public class Multirun : EditorWindow
             if (FindArgHandlerObj())
             {
                 runEditorAsClient = false;
-                handler.EditorEvent("client", ip, port);
+                ArgumentHandler.Singleton.EditorEvent("client", ip, port);
             }
         }
 
@@ -208,8 +197,7 @@ public class Multirun : EditorWindow
 
         EditorGUILayout.Space();
 
-        
-        
+
         // Отображение прочих опций
         showOtherConfigs = EditorGUILayout.Toggle(OtherConfigLabel, showOtherConfigs);
         if (showOtherConfigs)
@@ -245,7 +233,7 @@ public class Multirun : EditorWindow
                     scenes[i] = EditorGUILayout.ObjectField(SceneLabel + i, scenes[i], typeof(SceneAsset), false) as SceneAsset;
                 }
             }
-            
+
             system = (OperatingSystem) EditorGUILayout.EnumPopup(OsLabel, system); // Отрисовка селектора операционной системы
             buildPath = EditorGUILayout.TextField(BuildPathLabel, buildPath);
 
@@ -343,6 +331,7 @@ public class Multirun : EditorWindow
 
         // Тут был бип
     }
+
     // Returns true if build was success
     private bool Build()
     {
@@ -393,10 +382,10 @@ public class Multirun : EditorWindow
         if (Build()) Run();
     }
 
-    private void ShowRunReport(bool isBuild )
-    
+    private void ShowRunReport(bool isBuild)
+
     {
-        // todo implement
+        // todo переписать
         string info = "Запрошен ";
         if (isBuild)
         {
@@ -429,10 +418,11 @@ public class Multirun : EditorWindow
             {
                 info += " в редакторе";
             }
+
             info += "; ";
             if (runClients)
             {
-                info += "клиенты: " + (countOfInstances - 1)  ;
+                info += "клиенты: " + (countOfInstances - 1);
                 if (runInEditor && !runEditorAsServer)
                 {
                     info += ", один в редакторе; ";
@@ -441,7 +431,7 @@ public class Multirun : EditorWindow
             }
             else
             {
-                info += "Полноценный запуск: " + (countOfInstances - 1)+"; ";
+                info += "Полноценный запуск: " + (countOfInstances - 1) + "; ";
             }
         }
         else
@@ -453,12 +443,12 @@ public class Multirun : EditorWindow
             }
             else info += "; ";
         }
-        
+
         if (runServer)
         {
             info += "ip: " + ip + "; port: " + port;
         }
+
         Debug.Log(info);
-        //throw new NotImplementedException("not implemented yet");
     }
 }
