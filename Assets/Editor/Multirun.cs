@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.IO;
 using System.Diagnostics;
 using UnityEditor;
@@ -40,6 +41,21 @@ public class Multirun : EditorWindow
     // Buttons
     private const string RunButtonLabel = "Run";
     private const string BuildRunButtonLabel = "Build and Run";
+
+    #endregion
+
+    #region Report Messages
+
+    private const string RequestMsg = "Request: ";
+    private const string BuildMsg = "Build and Start;";
+    private const string StartMsg = "Start; ";
+    private const string SystemMsg = "System: ";
+    private const string PathToBuildMsg = "Path to Build: ";
+    private const string ServerMsg = "Server: ";
+    private const string InEditorMsg = "in the editor";
+    private const string DefaultStartMsg = "Default start: ";
+    private const string ClientsMsg = "Clients: ";
+    private const string OneInEditorMsg = "one in the editor; ";
 
     #endregion
 
@@ -126,12 +142,7 @@ public class Multirun : EditorWindow
     {
         string[] dirs = Directory.GetFiles("Assets", name, SearchOption.AllDirectories);
 
-        if (dirs.Length > 0)
-        {
-            return dirs[0];
-        }
-
-        return null;
+        return dirs.Length > 0 ? dirs[0] : null;
     }
 
     private void OnGUI()
@@ -386,69 +397,66 @@ public class Multirun : EditorWindow
 
     {
         // todo переписать
-        string info = "Запрошен ";
+        var infoString = new StringBuilder();
+        infoString.Append(RequestMsg);
         if (isBuild)
         {
-            info += "Build and Start; ";
+            infoString.Append(BuildMsg);
         }
         else
         {
-            info += "Start; ";
+            infoString.Append(StartMsg);
         }
 
-        info += "Система: ";
+        infoString.Append(SystemMsg);
         switch (system)
         {
             case OperatingSystem.Linux:
-                info += "GNU/Linux; ";
+                infoString.Append("GNU/Linux; ");
                 break;
             case OperatingSystem.Windows:
-                info += "MS Windows; ";
+                infoString.Append("MS Windows; ");
                 break;
             default:
                 throw new NotImplementedException(string.Format(OsErrorMessage, system));
         }
 
-        info += "Путь к Build: " + buildPath + "; ";
+        infoString.Append(String.Format("{0}{1}; ", PathToBuildMsg, buildPath));
 
         if (runServer)
         {
-            info += "сервер: 1";
+            infoString.Append(String.Format("{0}1", ServerMsg));
             if (runEditorAsServer)
             {
-                info += " в редакторе";
+                infoString.Append(String.Format(" {0}", InEditorMsg));
             }
 
-            info += "; ";
+            infoString.Append("; ");
             if (runClients)
             {
-                info += "клиенты: " + (countOfInstances - 1);
+                infoString.Append(ClientsMsg + (countOfInstances - 1));
                 if (runInEditor && !runEditorAsServer)
                 {
-                    info += ", один в редакторе; ";
+                    infoString.Append(String.Format(", {0}", OneInEditorMsg));
                 }
-                else info += "; ";
+                else infoString.Append("; ");
             }
             else
             {
-                info += "Полноценный запуск: " + (countOfInstances - 1) + "; ";
+                infoString.Append(String.Format("{0}{1}; ", DefaultStartMsg, (countOfInstances - 1)));
             }
         }
         else
         {
-            info += "Полноценный запуск: " + countOfInstances;
-            if (runInEditor)
-            {
-                info += ", один в редакторе; ";
-            }
-            else info += "; ";
+            infoString.Append(DefaultStartMsg + countOfInstances);
+            infoString.Append(runInEditor ? String.Format(", {0}", OneInEditorMsg) : "; ");
         }
 
         if (runServer)
         {
-            info += "ip: " + ip + "; port: " + port;
+            infoString.Append(String.Format("ip: {0}; port: {1}", ip, port));
         }
 
-        Debug.Log(info);
+        Debug.Log(infoString);
     }
 }

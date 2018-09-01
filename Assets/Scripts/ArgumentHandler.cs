@@ -11,7 +11,6 @@ public class ArgumentHandler : MonoBehaviour
     private string ip = "127.0.0.1";
     private bool isStartInUnity = false;
 
-
     public static ArgumentHandler Singleton = null;
 
     private void Awake()
