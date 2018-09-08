@@ -50,7 +50,7 @@ namespace Trubkin.Multirun
 
 		#region Error Messages
 
-		private const string OSMsg = "Your OS doesn't supported";
+		private const string OsMsg = "Your OS doesn't supported";
 		private const string SceneNullMsg = "Build stop! scene#{0} is NULL";
 
 		#endregion
@@ -92,8 +92,10 @@ namespace Trubkin.Multirun
 
 		private string FullExecutablePath
 		{
-			get { return buildPath + "\\" + Application.productName + ExecutionExtension; }
+			get { return buildPath + "/" + Application.productName + ExecutionExtension; }
 		}
+
+		[SerializeField] private List<int> processIds = new List<int>();
 
 		[MenuItem("Window/Multirun")]
 		public static void ShowWindow()
@@ -169,12 +171,13 @@ namespace Trubkin.Multirun
 			EditorGUILayout.Space();
 
 			EditorGUILayout.BeginHorizontal();
+			
 			if (GUILayout.Button(RunButtonLabel))
 			{
 				ShowRunReport(false);
 				Run();
 			}
-
+			
 			if (GUILayout.Button(BuildRunButtonLabel))
 			{
 				ShowRunReport(true);
@@ -182,7 +185,12 @@ namespace Trubkin.Multirun
 				// Костыль! После билда юнити забывает о том, что разметка перешла в горизонталь
 				EditorGUILayout.BeginHorizontal();
 			}
-
+			
+			if (GUILayout.Button("Stop"))
+			{
+				Stop();
+			}
+			
 			EditorGUILayout.EndHorizontal();
 			EditorGUILayout.EndScrollView();
 		}
@@ -196,8 +204,7 @@ namespace Trubkin.Multirun
 
 		private void Run()
 		{
-			var proc = new Process();
-			proc.StartInfo.FileName = FullExecutablePath;
+			Stop();
 
 			var i = 0;
 			if (editorIsServer || editorIsClient)
@@ -208,7 +215,10 @@ namespace Trubkin.Multirun
 
 			for (; i < countOfInstances; i++)
 			{
+				var proc = new Process();
+				proc.StartInfo.FileName = FullExecutablePath;
 				proc.Start();
+				processIds.Add(proc.Id);
 			}
 		}
 
@@ -241,6 +251,17 @@ namespace Trubkin.Multirun
 		private void BuildAndRun()
 		{
 			if (Build()) Run();
+		}
+
+		private void Stop()
+		{
+			EditorApplication.isPlaying = false;
+			foreach (var procId in processIds)
+			{
+				var proc = Process.GetProcessById(procId);
+				proc.Kill();
+			}
+			processIds.Clear();
 		}
 
 		private void ShowRunReport(bool withBuild)
