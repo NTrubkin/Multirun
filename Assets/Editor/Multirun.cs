@@ -18,7 +18,7 @@ namespace Trubkin.Multirun
 		#region Labels
 
 		// Main configs
-		private const string CountOfInstancesLabel = "Count of Game Instances";
+		private const string CountOfInstancesLabel = "Count of Instances";
 		private const string AutoConnectLabel = "Auto Connect";
 		private const string EditorIsServerLabel = "Editor is Server";
 		private const string EditorIsClientLabel = "Editor is Client";
@@ -90,6 +90,11 @@ namespace Trubkin.Multirun
 		
 		#endregion
 
+		private string FullExecutablePath
+		{
+			get { return buildPath + "\\" + Application.productName + ExecutionExtension; }
+		}
+
 		[MenuItem("Window/Multirun")]
 		public static void ShowWindow()
 		{
@@ -106,6 +111,14 @@ namespace Trubkin.Multirun
 
 			EditorGUILayout.Space();
 			countOfInstances = EditorGUILayout.IntField(CountOfInstancesLabel, countOfInstances);
+			if (countOfInstances < MinCountOfInstances)
+			{
+				countOfInstances = MinCountOfInstances;
+			}
+			else if (countOfInstances > MaxCountOfInstances)
+			{
+				countOfInstances = MaxCountOfInstances;
+			}
 
 			autoConnect = EditorGUILayout.Toggle(AutoConnectLabel, autoConnect);
 
@@ -132,7 +145,7 @@ namespace Trubkin.Multirun
 			showOtherConfiguration = EditorGUILayout.Foldout(showOtherConfiguration, OtherConfigLabel);
 			if (showOtherConfiguration)
 			{
-				EditorGUI.indentLevel = 1;
+				EditorGUI.indentLevel++;
 				argHandlerTag = EditorGUILayout.TextField(TagNameLabel, argHandlerTag);
 				ip = EditorGUILayout.TextField(IpLabel, ip);
 				port = EditorGUILayout.IntField(PortLabel, port);
@@ -142,19 +155,16 @@ namespace Trubkin.Multirun
 
 				EditorGui.DrawList(ScenesLabel, scenes, false);
 
-				buildPath = EditorGUILayout.TextField(BuildPathLabel, buildPath);
-
-				EditorGUI.indentLevel = 0;
+				EditorGUILayout.BeginHorizontal();
+				EditorGUILayout.TextField(BuildPathLabel, buildPath);
+				if (GUILayout.Button("browse", EditorStyles.miniButton, GUILayout.ExpandWidth(false)))
+				{
+					buildPath = EditorUtility.OpenFolderPanel("Build Path", buildPath, "");	
+				}
+				EditorGUILayout.EndHorizontal();
 			}
-
-			if (countOfInstances < MinCountOfInstances)
-			{
-				countOfInstances = MinCountOfInstances;
-			}
-			else if (countOfInstances > MaxCountOfInstances)
-			{
-				countOfInstances = MaxCountOfInstances;
-			}
+			
+			EditorGUI.indentLevel--;
 
 			EditorGUILayout.Space();
 
@@ -187,7 +197,7 @@ namespace Trubkin.Multirun
 		private void Run()
 		{
 			var proc = new Process();
-			proc.StartInfo.FileName = buildPath + Application.productName + ExecutionExtension;
+			proc.StartInfo.FileName = FullExecutablePath;
 
 			var i = 0;
 			if (editorIsServer || editorIsClient)
@@ -221,7 +231,7 @@ namespace Trubkin.Multirun
 				}
 			}
 
-			buildPlayerOptions.locationPathName = buildPath + Application.productName + ExecutionExtension; // Полный путь до билда с именем исполняемого файла
+			buildPlayerOptions.locationPathName = FullExecutablePath; // Полный путь до билда с именем исполняемого файла
 			buildPlayerOptions.target = BuildTarget.StandaloneWindows;
 			buildPlayerOptions.options = BuildOptions.None;
 			BuildPipeline.BuildPlayer(buildPlayerOptions);
@@ -237,7 +247,7 @@ namespace Trubkin.Multirun
 		{
 			var reportMsg = new StringBuilder(string.Format(RequestMsgPattern,
 				withBuild ? BuildMsg : RunMsg,
-				buildPath + Application.productName + ExecutionExtension,
+				FullExecutablePath,
 				countOfInstances,
 				editorIsServer || editorIsClient ? WithEditorMsg : ""
 			));
