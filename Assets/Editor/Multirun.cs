@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text;
+using System.IO;
 using System.Diagnostics;
 using UnityEditor;
 using UnityEngine;
@@ -15,6 +17,7 @@ public class Multirun : EditorWindow
     }
 
     // This labels are using for fields in Multirun tab in Unity Editor
+
     #region Labels
 
     // Main configs
@@ -41,9 +44,23 @@ public class Multirun : EditorWindow
 
     #endregion
 
+    #region Report Messages
+
+    private const string RequestMsg = "Request: ";
+    private const string BuildMsg = "Build and Start;";
+    private const string StartMsg = "Start; ";
+    private const string SystemMsg = "System: ";
+    private const string PathToBuildMsg = "Path to Build: ";
+    private const string ServerMsg = "Server: ";
+    private const string InEditorMsg = "in the editor";
+    private const string DefaultStartMsg = "Default start: ";
+    private const string ClientsMsg = "Clients: ";
+    private const string OneInEditorMsg = "one in the editor; ";
+
+    #endregion
+
     #region Error Messages
 
-    private const string TagErrorMessage = "Tag not found and ArgumentHandler!";
     private const string ArgHandlerErrorMessage = "ArgumentHandler not found!";
     private const string OsErrorMessage = "Unknown OS \"{0}\"";
 
@@ -57,11 +74,10 @@ public class Multirun : EditorWindow
     private const int MaxCountOfInstances = 5;
     private const int MinCountOfInstances = 1;
 
-    private const string ScenesPath = "Assets/Scenes/"; //Путь до место расположения самих сцен 
-
     #endregion
 
     // Variables that are used for store data from visual fields in Multirun tab
+
     #region TabCache
 
     [SerializeField] private SceneAsset[] scenes;
@@ -94,8 +110,9 @@ public class Multirun : EditorWindow
     private string nameExtension; // todo упразднить (спрятать в методы)
     private bool isServerEnabled;
     private bool runEditorAsClient = false; // todo проверить правильность имени, если нет, вернуть имя isCus. Попытаться упразднить
+
     private bool isError = false;
-    private ArgumentHandler handler;
+    //private ArgumentHandler handler;
 
 
     [MenuItem("Window/Multirun")]
@@ -104,25 +121,14 @@ public class Multirun : EditorWindow
         GetWindow<Multirun>("Multirun");
     }
 
-    // Поиск объекта с тегом, а также компонента ArgumentHandler
+    // Поиск компонента ArgumentHandler
     private bool FindArgHandlerObj()
     {
-        //Проверка на повторный запуск скрипта, так как находится в OnGUI и межет быть вызван более 1 раза 
         if (!isError)
         {
-            var argHandlerObj = GameObject.FindGameObjectWithTag(argHandlerTag);
-            if (argHandlerObj == null)
+            //Поиск через singleton
+            if (ArgumentHandler.Singleton == null)
             {
-                // Если объект не найден, дальнейшая работа скрипта невозможна
-                Debug.LogError(TagErrorMessage);
-                isError = true;
-                return false;
-            }
-            else handler = argHandlerObj.GetComponentInParent<ArgumentHandler>();
-
-            if (handler == null)
-            {
-                // Если компонент не найден, дальнейшая работа скрипта невозможна
                 Debug.LogError(ArgHandlerErrorMessage);
                 isError = true;
                 return false;
@@ -130,6 +136,13 @@ public class Multirun : EditorWindow
             else return true; // вернем истину, если объект найден
         }
         else return false; // возвращает ложь,если была ранее выдана ошибка
+    }
+
+    string FindScenelocation(string name)
+    {
+        string[] dirs = Directory.GetFiles("Assets", name, SearchOption.AllDirectories);
+
+        return dirs.Length > 0 ? dirs[0] : null;
     }
 
     private void OnGUI()
@@ -141,7 +154,7 @@ public class Multirun : EditorWindow
             {
                 if (FindArgHandlerObj())
                 {
-                    handler.EditorEvent("server", ip, port);
+                    ArgumentHandler.Singleton.EditorEvent("server", ip, port);
                     isServerEnabled = false;
                 }
             }
@@ -153,7 +166,7 @@ public class Multirun : EditorWindow
             if (FindArgHandlerObj())
             {
                 runEditorAsClient = false;
-                handler.EditorEvent("client", ip, port);
+                ArgumentHandler.Singleton.EditorEvent("client", ip, port);
             }
         }
 
@@ -194,6 +207,7 @@ public class Multirun : EditorWindow
         // конец логики чекбоксов
 
         EditorGUILayout.Space();
+
 
         // Отображение прочих опций
         showOtherConfigs = EditorGUILayout.Toggle(OtherConfigLabel, showOtherConfigs);
@@ -251,13 +265,14 @@ public class Multirun : EditorWindow
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button(RunButtonLabel))
         {
+            ShowRunReport(false);
             Run();
         }
 
         if (GUILayout.Button(BuildRunButtonLabel))
         {
+            ShowRunReport(true);
             BuildAndRun();
-
             // Костыль! После билда юнити забывает о том, что разметка перешла в горизонталь
             EditorGUILayout.BeginHorizontal();
         }
@@ -336,7 +351,7 @@ public class Multirun : EditorWindow
         {
             if (scenes[i] != null)
             {
-                sceneNames[i] = ScenesPath + scenes[i].name + ".unity";
+                sceneNames[i] = FindScenelocation(scenes[i].name + ".unity");
             }
             else
             {
@@ -378,9 +393,70 @@ public class Multirun : EditorWindow
         if (Build()) Run();
     }
 
-    private void ShowRunReport()
+    private void ShowRunReport(bool isBuild)
+
     {
-        // todo implement
-        throw new NotImplementedException("not implemented yet");
+        // todo переписать
+        var infoString = new StringBuilder();
+        infoString.Append(RequestMsg);
+        if (isBuild)
+        {
+            infoString.Append(BuildMsg);
+        }
+        else
+        {
+            infoString.Append(StartMsg);
+        }
+
+        infoString.Append(SystemMsg);
+        switch (system)
+        {
+            case OperatingSystem.Linux:
+                infoString.Append("GNU/Linux; ");
+                break;
+            case OperatingSystem.Windows:
+                infoString.Append("MS Windows; ");
+                break;
+            default:
+                throw new NotImplementedException(string.Format(OsErrorMessage, system));
+        }
+
+        infoString.Append(String.Format("{0}{1}; ", PathToBuildMsg, buildPath));
+
+        if (runServer)
+        {
+            infoString.Append(String.Format("{0}1", ServerMsg));
+            if (runEditorAsServer)
+            {
+                infoString.Append(String.Format(" {0}", InEditorMsg));
+            }
+
+            infoString.Append("; ");
+            if (runClients)
+            {
+                infoString.Append(ClientsMsg + (countOfInstances - 1));
+                if (runInEditor && !runEditorAsServer)
+                {
+                    infoString.Append(String.Format(", {0}", OneInEditorMsg));
+                }
+                else infoString.Append("; ");
+            }
+            else
+            {
+                infoString.Append(String.Format("{0}{1}; ", DefaultStartMsg, (countOfInstances - 1)));
+            }
+        }
+        else
+        {
+            infoString.Append(DefaultStartMsg + countOfInstances);
+            infoString.Append(runInEditor ? String.Format(", {0}", OneInEditorMsg) : "; ");
+        }
+
+        if (runServer)
+        {
+            infoString.Append(String.Format("ip: {0}; port: {1}", ip, port));
+        }
+
+        Debug.Log(infoString);
     }
 }

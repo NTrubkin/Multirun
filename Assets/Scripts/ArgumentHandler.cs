@@ -1,44 +1,50 @@
 ﻿using System;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 
 public class ArgumentHandler : MonoBehaviour
 {
-    // todo решить вопрос с синглтоном
-    public static ArgumentHandler singleton;
     private int countArgs;
     private int port = 7777;
     private string args;
     private string ip = "127.0.0.1";
     private bool isStartInUnity = false;
 
-    private void Start()
+    public static ArgumentHandler Singleton = null;
+
+    private void Awake()
+    {
+        if (Singleton != null)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Singleton = this;
+            InitializedStart();
+        }
+
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void InitializedStart()
     {
         countArgs = Environment.GetCommandLineArgs().Length;
-        if (countArgs != 1)
+        if (countArgs == 1) return;
+        switch (Environment.GetCommandLineArgs()[1])
         {
-            switch (Environment.GetCommandLineArgs()[1])
-            {
-                case "server":
-                    if (countArgs == 2)
-                    {
-                        SetPort(port);
-                    }
-                    else
-                    {
-                        SetPort(Convert.ToInt32(Environment.GetCommandLineArgs()[2]));
-                    }
-
-                    StartHost();
-                    break;
-                case "client":
-                    ip = Environment.GetCommandLineArgs()[2];
-                    port = Convert.ToInt32(Environment.GetCommandLineArgs()[3]);
-                    Connect(ip, port);
-                    break;
-                default:
-                    throw new ArgumentException("Wrong argument " + Environment.GetCommandLineArgs()[1]);
-            }
+            case "server":
+                SetPort(countArgs == 2 ? port : Convert.ToInt32(Environment.GetCommandLineArgs()[2]));
+                StartHost();
+                break;
+            case "client":
+                ip = Environment.GetCommandLineArgs()[2];
+                port = Convert.ToInt32(Environment.GetCommandLineArgs()[3]);
+                Connect(ip, port);
+                break;
+            default:
+                throw new ArgumentException("Wrong argument " + Environment.GetCommandLineArgs()[1]);
         }
     }
 
