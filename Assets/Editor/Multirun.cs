@@ -41,23 +41,18 @@ namespace Trubkin.Multirun
 
 		#region Report Messages
 
-		private const string OSMsg = "Your OS doesn't supported";
-		private const string RequestMsg = "Request: ";
-		private const string BuildMsg = "Build and Start;";
-		private const string StartMsg = "Start; ";
-		private const string SystemMsg = "System: ";
-		private const string PathToBuildMsg = "Path to Build: ";
-		private const string ServerMsg = "Server: ";
-		private const string InEditorMsg = "in the editor";
-		private const string DefaultStartMsg = "Default start: ";
-		private const string ClientsMsg = "Clients: ";
-		private const string OneInEditorMsg = "one in the editor; ";
+		private const string RequestMsgPattern = "[Multirun] \"{0}\" requested; Path \"{1}\"; Instances: {2} {3}; ";
+		private const string ConnectMsgPattern = "Server: {0}; Clients: {1}; Сonnect to: IP: {2}; Port {3}; ";
+		private const string BuildMsg = "Build and Run";
+		private const string RunMsg = "Run";
+		private const string WithEditorMsg = "with editor";
 
 		#endregion
 
 		#region Error Messages
 
 		private const string ArgHandlerErrorMessage = "ArgumentHandler not found!";
+		private const string OSMsg = "Your OS doesn't supported";
 
 		#endregion
 
@@ -65,7 +60,7 @@ namespace Trubkin.Multirun
 
 		private const int MaxCountOfInstances = 5;
 		private const int MinCountOfInstances = 1;
-		
+
 		private const string ExecutionExtension = ".exe";
 		private const string SceneExtension = ".unity";
 
@@ -76,7 +71,7 @@ namespace Trubkin.Multirun
 		#region TabCache
 
 		[SerializeField] private List<SceneAsset> scenes;
-		
+
 		[SerializeField] private int countOfInstances = 1; // Instance - это экземпляр игры (новое окно или внутри редактора)
 
 		[SerializeField] private string ip = "127.0.0.1";
@@ -254,7 +249,7 @@ namespace Trubkin.Multirun
 		{
 			isError = false;
 			isServerEnabled = true;
-			
+
 
 			var proc = new Process();
 			proc.StartInfo.FileName = buildPath + Application.productName + ExecutionExtension;
@@ -300,7 +295,7 @@ namespace Trubkin.Multirun
 		private bool Build()
 		{
 			var buildPlayerOptions = new BuildPlayerOptions();
-			
+
 			buildPlayerOptions.scenes = new string[scenes.Count];
 			for (var i = 0; i < scenes.Count; i++)
 			{
@@ -327,60 +322,31 @@ namespace Trubkin.Multirun
 			if (Build()) Run();
 		}
 
-		private void ShowRunReport(bool isBuild)
+		private void ShowRunReport(bool withBuild)
 		{
 			// todo переписать
-			var infoString = new StringBuilder();
-			infoString.Append(RequestMsg);
-			if (isBuild)
+			var reportMsg = new StringBuilder(string.Format(RequestMsgPattern,
+				withBuild ? BuildMsg : RunMsg,
+				buildPath + Application.productName + ExecutionExtension,
+				countOfInstances,
+				runInEditor ? WithEditorMsg : ""
+			));
+			
+			if (runServer || runClients)
 			{
-				infoString.Append(BuildMsg);
-			}
-			else
-			{
-				infoString.Append(StartMsg);
-			}
+				var countOfClients = 0;
 
-			infoString.Append(SystemMsg);
-			infoString.Append("MS Windows; ");
-
-			infoString.Append(String.Format("{0}{1}; ", PathToBuildMsg, buildPath));
-
-			if (runServer)
-			{
-				infoString.Append(String.Format("{0}1", ServerMsg));
-				if (runEditorAsServer)
-				{
-					infoString.Append(String.Format(" {0}", InEditorMsg));
-				}
-
-				infoString.Append("; ");
-				if (runClients)
-				{
-					infoString.Append(ClientsMsg + (countOfInstances - 1));
-					if (runInEditor && !runEditorAsServer)
-					{
-						infoString.Append(String.Format(", {0}", OneInEditorMsg));
-					}
-					else infoString.Append("; ");
-				}
-				else
-				{
-					infoString.Append(String.Format("{0}{1}; ", DefaultStartMsg, (countOfInstances - 1)));
-				}
-			}
-			else
-			{
-				infoString.Append(DefaultStartMsg + countOfInstances);
-				infoString.Append(runInEditor ? String.Format(", {0}", OneInEditorMsg) : "; ");
+				if (runClients) countOfClients = countOfInstances;
+				if (runServer) countOfClients--;
+				
+				reportMsg.Append(string.Format(ConnectMsgPattern,
+					runServer ? 1 : 0,
+					countOfClients,
+					ip,
+					port));
 			}
 
-			if (runServer)
-			{
-				infoString.Append(String.Format("ip: {0}; port: {1}", ip, port));
-			}
-
-			Debug.Log(infoString);
+			Debug.Log(reportMsg);
 		}
 	}
 }
