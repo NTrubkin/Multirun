@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Text;
 using System.IO;
 using System.Diagnostics;
+using System.Threading;
 using Trubkin.Util;
 using UnityEditor;
 using UnityEngine;
@@ -52,6 +54,7 @@ namespace Trubkin.Multirun
 
 		private const string OsMsg = "Your OS doesn't supported";
 		private const string SceneNullMsg = "Build stop! scene#{0} is NULL";
+		private const string RunFailMsg = "Can't start process. {0}: {1}";
 
 		#endregion
 
@@ -62,6 +65,10 @@ namespace Trubkin.Multirun
 
 		private const string ExecutionExtension = ".exe";
 		private const string SceneExtension = ".unity";
+
+		// Костыль (см. Update())! количество фреймов задержки между остановкой и запуском игры в редакторе
+		// Количество подбирается индивидуально опытным путем
+		private const int ExecutionDelay = 60;
 
 		#endregion
 
@@ -81,13 +88,14 @@ namespace Trubkin.Multirun
 		[SerializeField] private string buildPath = "Build\\";
 
 		[SerializeField] private bool showOtherConfiguration;
-		
+
+		[SerializeField] private bool runEditor;
 		[SerializeField] private bool autoConnect;
 		[SerializeField] private bool editorIsServer;
 		[SerializeField] private bool editorIsClient;
 
 		private Vector2 scrollPos; // Память для вертикального скролла
-		
+
 		#endregion
 
 		private string FullExecutablePath
@@ -96,6 +104,7 @@ namespace Trubkin.Multirun
 		}
 
 		[SerializeField] private List<int> processIds = new List<int>();
+		private int exeDelayTimer = 0; // Костыль (см. Update())! оставшееся количество фреймов до запуска игры в редакторе
 
 		[MenuItem("Window/Multirun")]
 		public static void ShowWindow()
@@ -105,6 +114,18 @@ namespace Trubkin.Multirun
 #else
 		Debug.LogError(OSMsg);
 #endif
+		}
+
+		private void Update()
+		{
+			// Костыль! Unity не позволяет остановить и снова запустить игру в редакторе сразу, требуется задержка в несколько фреймов
+			// поэтому рестарт переносится. Для этого и нужен таймер exeDelayTimer
+			if (exeDelayTimer <= 0) return;
+			exeDelayTimer--;
+			if (exeDelayTimer <= 0)
+			{
+				Run();
+			}
 		}
 
 		private void OnGUI()
@@ -122,25 +143,27 @@ namespace Trubkin.Multirun
 				countOfInstances = MaxCountOfInstances;
 			}
 
+			runEditor = EditorGUILayout.Toggle("Run in Editor", runEditor);
 			autoConnect = EditorGUILayout.Toggle(AutoConnectLabel, autoConnect);
 
-			if (autoConnect)
+			EditorGUI.BeginDisabledGroup(!autoConnect || !runEditor);
+
+			// Блок radio toggle
+
+			if (editorIsServer != EditorGUILayout.Toggle(EditorIsServerLabel, editorIsServer, EditorStyles.radioButton))
 			{
-				// Блок radio toggle
-				
-				if (editorIsServer != EditorGUILayout.Toggle(EditorIsServerLabel, editorIsServer, EditorStyles.radioButton))
-				{
-					editorIsClient = false;
-					editorIsServer = !editorIsServer;
-				}
-				
-				if (editorIsClient != EditorGUILayout.Toggle(EditorIsClientLabel, editorIsClient, EditorStyles.radioButton))
-				{
-					editorIsServer = false;
-					editorIsClient = !editorIsClient;
-				}	
+				editorIsClient = false;
+				editorIsServer = !editorIsServer;
 			}
-			
+
+			if (editorIsClient != EditorGUILayout.Toggle(EditorIsClientLabel, editorIsClient, EditorStyles.radioButton))
+			{
+				editorIsServer = false;
+				editorIsClient = !editorIsClient;
+			}
+
+			EditorGUI.EndDisabledGroup();
+
 			EditorGUILayout.Space();
 
 			// Отображение прочих опций
@@ -161,23 +184,25 @@ namespace Trubkin.Multirun
 				EditorGUILayout.TextField(BuildPathLabel, buildPath);
 				if (GUILayout.Button("browse", EditorStyles.miniButton, GUILayout.ExpandWidth(false)))
 				{
-					buildPath = EditorUtility.OpenFolderPanel("Build Path", buildPath, "");	
+					buildPath = EditorUtility.OpenFolderPanel("Build Path", buildPath, "");
 				}
+
 				EditorGUILayout.EndHorizontal();
 			}
-			
+
 			EditorGUI.indentLevel--;
 
 			EditorGUILayout.Space();
 
 			EditorGUILayout.BeginHorizontal();
-			
+
 			if (GUILayout.Button(RunButtonLabel))
 			{
 				ShowRunReport(false);
-				Run();
+				Stop();
+				DelayRun();
 			}
-			
+
 			if (GUILayout.Button(BuildRunButtonLabel))
 			{
 				ShowRunReport(true);
@@ -185,12 +210,12 @@ namespace Trubkin.Multirun
 				// Костыль! После билда юнити забывает о том, что разметка перешла в горизонталь
 				EditorGUILayout.BeginHorizontal();
 			}
-			
+
 			if (GUILayout.Button("Stop"))
 			{
 				Stop();
 			}
-			
+
 			EditorGUILayout.EndHorizontal();
 			EditorGUILayout.EndScrollView();
 		}
@@ -202,12 +227,15 @@ namespace Trubkin.Multirun
 			return dirs.Length > 0 ? dirs[0] : null;
 		}
 
+		private void DelayRun()
+		{
+			exeDelayTimer = ExecutionDelay;
+		}
+
 		private void Run()
 		{
-			Stop();
-
 			var i = 0;
-			if (editorIsServer || editorIsClient)
+			if (runEditor)
 			{
 				EditorApplication.isPlaying = true; // Старт в редакторе Unity
 				i++;
@@ -217,8 +245,15 @@ namespace Trubkin.Multirun
 			{
 				var proc = new Process();
 				proc.StartInfo.FileName = FullExecutablePath;
-				proc.Start();
-				processIds.Add(proc.Id);
+				try
+				{
+					proc.Start();
+					processIds.Add(proc.Id);
+				}
+				catch (Win32Exception e)
+				{
+					Debug.LogWarning(string.Format(RunFailMsg, e.GetType().Name, e.Message));
+				}
 			}
 		}
 
@@ -250,6 +285,7 @@ namespace Trubkin.Multirun
 
 		private void BuildAndRun()
 		{
+			Stop();
 			if (Build()) Run();
 		}
 
@@ -258,9 +294,21 @@ namespace Trubkin.Multirun
 			EditorApplication.isPlaying = false;
 			foreach (var procId in processIds)
 			{
-				var proc = Process.GetProcessById(procId);
-				proc.Kill();
+				try
+				{
+					var proc = Process.GetProcessById(procId);
+					proc.Kill();
+				}
+				catch (InvalidOperationException)
+				{
+					// just ignore
+				}
+				catch (ArgumentException)
+				{
+					// just ignore
+				}
 			}
+
 			processIds.Clear();
 		}
 
@@ -270,9 +318,9 @@ namespace Trubkin.Multirun
 				withBuild ? BuildMsg : RunMsg,
 				FullExecutablePath,
 				countOfInstances,
-				editorIsServer || editorIsClient ? WithEditorMsg : ""
+				runEditor ? WithEditorMsg : ""
 			));
-			
+
 			if (autoConnect)
 			{
 				reportMsg.Append(string.Format(ConnectMsgPattern,
