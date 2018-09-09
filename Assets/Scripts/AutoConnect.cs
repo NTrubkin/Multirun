@@ -6,6 +6,7 @@ namespace Trubkin.Util
 {
 	public class AutoConnect : MonoBehaviour
 	{
+		// todo check args before applying
 		private void Start()
 		{
 			if (ArgumentHandler.Singleton == null)
@@ -20,18 +21,16 @@ namespace Trubkin.Util
 				return;
 			}
 
-			if (ArgumentHandler.Singleton.ContainsKey("server"))
+			if (ArgumentHandler.Singleton.GetValue("connect") == "server")
 			{
-				var ip = ArgumentHandler.Singleton.GetValue("ip");
 				var port = Convert.ToInt32(ArgumentHandler.Singleton.GetValue("port"));
 				
-				NetworkManager.singleton.networkAddress = ip;
 				NetworkManager.singleton.networkPort = port;
 				NetworkManager.singleton.StartHost();
 				
 			}
 			
-			if (ArgumentHandler.Singleton.ContainsKey("client"))
+			if (ArgumentHandler.Singleton.GetValue("connect") == "client")
 			{
 				var ip = ArgumentHandler.Singleton.GetValue("ip");
 				var port = Convert.ToInt32(ArgumentHandler.Singleton.GetValue("port"));

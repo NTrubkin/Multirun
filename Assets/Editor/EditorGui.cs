@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Trubkin.Util
 {
@@ -10,6 +12,8 @@ namespace Trubkin.Util
 
         public static void DrawList<T>(string label, IList<T> list, bool allowSceneObject = true) where T : Object
         {
+            if (list == null) throw new NullReferenceException();
+            
             expandList = EditorGUILayout.Foldout(expandList, label);
             if (!expandList) return;
 

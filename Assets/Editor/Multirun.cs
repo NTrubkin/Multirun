@@ -69,8 +69,8 @@ namespace Trubkin.Multirun
 		private const string ExecutionExtension = ".exe";
 		private const string SceneExtension = ".unity";
 		
-		private const string ServerArgPattern = "server port={0}";
-		private const string ClientArgPattern = "client ip={0} port={1}";
+		private const string ServerArgPattern = "connect=server port={0}";
+		private const string ClientArgPattern = "connect=client ip={0} port={1}";
 
 		// Костыль (см. Update())! количество фреймов задержки между остановкой и запуском игры в редакторе
 		// Количество подбирается индивидуально опытным путем
@@ -82,7 +82,7 @@ namespace Trubkin.Multirun
 
 		#region TabCache
 
-		[SerializeField] private List<SceneAsset> scenes;
+		[SerializeField] private List<SceneAsset> scenes = new List<SceneAsset>();
 
 		[SerializeField] private int countOfInstances = 1; // Instance - это экземпляр игры (новое окно или внутри редактора)
 
@@ -261,10 +261,6 @@ namespace Trubkin.Multirun
 					proc.StartInfo.Arguments = GetRunArguments(!serverStarted, serverStarted);
 					serverStarted = true;
 				}
-				else
-				{
-					proc.StartInfo.Arguments = GetRunArguments(serverStarted, !serverStarted);
-				}
 				
 				try
 				{
@@ -356,8 +352,7 @@ namespace Trubkin.Multirun
 		private static void ClearEditorArguments()
 		{
 			if (ArgumentHandler.Singleton == null) return;
-			ArgumentHandler.Singleton.Remove("server");
-			ArgumentHandler.Singleton.Remove("client");
+			ArgumentHandler.Singleton.Remove("connect");
 			ArgumentHandler.Singleton.Remove("ip");
 			ArgumentHandler.Singleton.Remove("port");
 		}
@@ -365,10 +360,17 @@ namespace Trubkin.Multirun
 		private void AddEditorArguments(bool runServer, bool runClient)
 		{
 			if (ArgumentHandler.Singleton == null) return;
-			if (runServer) ArgumentHandler.Singleton.SetKey("server");
-			if (runClient) ArgumentHandler.Singleton.SetKey("client");
-			if (runServer || runClient) ArgumentHandler.Singleton.SetValue("ip", ip);
-			if (runServer || runClient) ArgumentHandler.Singleton.SetValue("port", port.ToString());
+			if (runServer)
+			{
+				ArgumentHandler.Singleton.SetValue("connect", "server");
+				ArgumentHandler.Singleton.SetValue("port", port.ToString());
+			}
+			if (runClient)
+			{
+				ArgumentHandler.Singleton.SetValue("connect", "client");
+				ArgumentHandler.Singleton.SetValue("ip", ip);
+				ArgumentHandler.Singleton.SetValue("port", port.ToString());
+			} 
 		}
 		
 		private string GetRunArguments(bool runServer, bool runClient)

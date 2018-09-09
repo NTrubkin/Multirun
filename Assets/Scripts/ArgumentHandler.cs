@@ -65,7 +65,9 @@ namespace Trubkin.Util
 
 		public string GetValue(string key)
 		{
-			return configs.Find(x => x.Split(Divider)[0] == key).Split(Divider)[1];
+			var config = configs.Find(x => x.Split(Divider)[0] == key);
+			if (config == null) return null;
+			return config.Split(Divider).Length > 1 ? config.Split(Divider)[1] : "";
 		}
 
 		public void SetValue(string key, string value)
