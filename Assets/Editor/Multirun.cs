@@ -21,6 +21,7 @@ namespace Trubkin.Multirun
 
 		// Main configs
 		private const string CountOfInstancesLabel = "Count of Instances";
+		private const string RunInEditorLabel = "RunInEditor";
 		private const string AutoConnectLabel = "Auto Connect";
 		private const string EditorIsServerLabel = "Editor is Server";
 		private const string EditorIsClientLabel = "Editor is Client";
@@ -35,9 +36,11 @@ namespace Trubkin.Multirun
 		private const string ScenesLabel = "Scenes";
 
 		// Buttons
+		private const string BrowseButtonLabel = "Browse";
 		private const string RunButtonLabel = "Run";
 		private const string BuildRunButtonLabel = "Build and Run";
-
+		private const string StopButtonLabel = "Stop";
+		
 		#endregion
 
 		#region Report Messages
@@ -146,7 +149,7 @@ namespace Trubkin.Multirun
 				countOfInstances = MaxCountOfInstances;
 			}
 
-			runEditor = EditorGUILayout.Toggle("Run in Editor", runEditor);
+			runEditor = EditorGUILayout.Toggle(RunInEditorLabel, runEditor);
 			autoConnect = EditorGUILayout.Toggle(AutoConnectLabel, autoConnect);
 
 			EditorGUI.BeginDisabledGroup(!autoConnect || !runEditor);
@@ -185,9 +188,9 @@ namespace Trubkin.Multirun
 
 				EditorGUILayout.BeginHorizontal();
 				EditorGUILayout.TextField(BuildPathLabel, buildPath);
-				if (GUILayout.Button("browse", EditorStyles.miniButton, GUILayout.ExpandWidth(false)))
+				if (GUILayout.Button(BrowseButtonLabel, EditorStyles.miniButton, GUILayout.ExpandWidth(false)))
 				{
-					buildPath = EditorUtility.OpenFolderPanel("Build Path", buildPath, "");
+					buildPath = EditorUtility.OpenFolderPanel(BuildPathLabel, buildPath, "");
 				}
 
 				EditorGUILayout.EndHorizontal();
@@ -214,7 +217,7 @@ namespace Trubkin.Multirun
 				EditorGUILayout.BeginHorizontal();
 			}
 
-			if (GUILayout.Button("Stop"))
+			if (GUILayout.Button(StopButtonLabel))
 			{
 				Stop();
 			}
