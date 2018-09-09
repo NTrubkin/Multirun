@@ -27,10 +27,10 @@ namespace Trubkin.Multirun
 		private const string OtherConfigLabel = "Other Configuration";
 
 		// Other configs
-		private const string TagNameLabel = "Tag of ArgHandler"; // todo rename
 		private const string BuildPathLabel = "Build Path";
 		private const string IpLabel = "IP";
 		private const string PortLabel = "Port";
+		private const string ReportLabel = "Show Report";
 		private const string BuildConfigLabel = "Build Configuration";
 		private const string ScenesLabel = "Scenes";
 
@@ -65,10 +65,13 @@ namespace Trubkin.Multirun
 
 		private const string ExecutionExtension = ".exe";
 		private const string SceneExtension = ".unity";
+		
+		private const string ServerArgPattern = "server port={0}";
+		private const string ClientArgPattern = "client ip={0} port={1}";
 
 		// Костыль (см. Update())! количество фреймов задержки между остановкой и запуском игры в редакторе
 		// Количество подбирается индивидуально опытным путем
-		private const int ExecutionDelay = 60;
+		private const int ExecutionDelay = 10;
 
 		#endregion
 
@@ -80,19 +83,19 @@ namespace Trubkin.Multirun
 
 		[SerializeField] private int countOfInstances = 1; // Instance - это экземпляр игры (новое окно или внутри редактора)
 
-		[SerializeField] private string ip = "127.0.0.1";
-		[SerializeField] private int port = 7777;
-
-		[SerializeField] private string argHandlerTag = "Handler";
-
-		[SerializeField] private string buildPath = "Build\\";
-
-		[SerializeField] private bool showOtherConfiguration;
-
 		[SerializeField] private bool runEditor;
 		[SerializeField] private bool autoConnect;
 		[SerializeField] private bool editorIsServer;
 		[SerializeField] private bool editorIsClient;
+
+		[SerializeField] private bool showOtherConfiguration;
+		[SerializeField] private string ip = "127.0.0.1";
+		[SerializeField] private int port = 7777;
+		[SerializeField] private bool report;
+
+		[SerializeField] private string buildPath = "Build\\";
+
+
 
 		private Vector2 scrollPos; // Память для вертикального скролла
 
@@ -171,9 +174,9 @@ namespace Trubkin.Multirun
 			if (showOtherConfiguration)
 			{
 				EditorGUI.indentLevel++;
-				argHandlerTag = EditorGUILayout.TextField(TagNameLabel, argHandlerTag);
 				ip = EditorGUILayout.TextField(IpLabel, ip);
 				port = EditorGUILayout.IntField(PortLabel, port);
+				report = EditorGUILayout.Toggle(ReportLabel, report);
 
 				EditorGUILayout.Space();
 				EditorGUILayout.LabelField(BuildConfigLabel);
@@ -198,14 +201,14 @@ namespace Trubkin.Multirun
 
 			if (GUILayout.Button(RunButtonLabel))
 			{
-				ShowRunReport(false);
+				if(report) ShowRunReport(false);
 				Stop();
 				DelayRun();
 			}
 
 			if (GUILayout.Button(BuildRunButtonLabel))
 			{
-				ShowRunReport(true);
+				if (report) ShowRunReport(true);
 				BuildAndRun();
 				// Костыль! После билда юнити забывает о том, что разметка перешла в горизонталь
 				EditorGUILayout.BeginHorizontal();
@@ -234,10 +237,15 @@ namespace Trubkin.Multirun
 
 		private void Run()
 		{
+			var serverStarted = false;
+			
 			var i = 0;
 			if (runEditor)
 			{
-				EditorApplication.isPlaying = true; // Старт в редакторе Unity
+				ClearEditorArguments();
+				EditorApplication.isPlaying = true;
+				if (autoConnect) AddEditorArguments(editorIsServer, editorIsClient);
+				serverStarted = editorIsServer;
 				i++;
 			}
 
@@ -245,8 +253,19 @@ namespace Trubkin.Multirun
 			{
 				var proc = new Process();
 				proc.StartInfo.FileName = FullExecutablePath;
+				if (autoConnect)
+				{
+					proc.StartInfo.Arguments = GetRunArguments(!serverStarted, serverStarted);
+					serverStarted = true;
+				}
+				else
+				{
+					proc.StartInfo.Arguments = GetRunArguments(serverStarted, !serverStarted);
+				}
+				
 				try
 				{
+					
 					proc.Start();
 					processIds.Add(proc.Id);
 				}
@@ -329,6 +348,39 @@ namespace Trubkin.Multirun
 			}
 
 			Debug.Log(reportMsg);
+		}
+
+		private static void ClearEditorArguments()
+		{
+			if (ArgumentHandler.Singleton == null) return;
+			ArgumentHandler.Singleton.Remove("server");
+			ArgumentHandler.Singleton.Remove("client");
+			ArgumentHandler.Singleton.Remove("ip");
+			ArgumentHandler.Singleton.Remove("port");
+		}
+
+		private void AddEditorArguments(bool runServer, bool runClient)
+		{
+			if (ArgumentHandler.Singleton == null) return;
+			if (runServer) ArgumentHandler.Singleton.SetKey("server");
+			if (runClient) ArgumentHandler.Singleton.SetKey("client");
+			if (runServer || runClient) ArgumentHandler.Singleton.SetValue("ip", ip);
+			if (runServer || runClient) ArgumentHandler.Singleton.SetValue("port", port.ToString());
+		}
+		
+		private string GetRunArguments(bool runServer, bool runClient)
+		{
+			if (runServer)
+			{
+				return string.Format(ServerArgPattern, port);
+			}
+
+			if (runClient)
+			{
+				return string.Format(ClientArgPattern, ip, port);
+			}
+			
+			return "";
 		}
 	}
 }

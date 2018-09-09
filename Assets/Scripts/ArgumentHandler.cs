@@ -1,132 +1,98 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Networking;
 
 namespace Trubkin.Util
 {
-	public class ArgumentHandler : MonoBehaviour
+	// Установить ExecutionOrder раньше всех
+
+	// 2 способа установить параметры: через методы класса в редакторе и через аргументы исполняемого файла
+	// аргументы исполняемого файла имеют больший приоритет
+	public class ArgumentHandler : MonoBehaviour, IConfig
 	{
-		private int countArgs;
-		private int port = 7777;
-		private string args;
-		private string ip = "127.0.0.1";
-		private bool isStartInUnity = false;
+		private const char Divider = '='; 
+		// Костыль! Unity не умеет сериализовать словари, а значит и запоминать их от редактора до старта
+		// Значит используем лист строчек ключ=значение
+		[SerializeField] private List<string> configs = new List<string>();
 
-		public static ArgumentHandler Singleton = null;
+		public static ArgumentHandler Singleton { get; private set; }
 
-		private void Awake()
+		private ArgumentHandler()
 		{
 			if (Singleton != null)
 			{
-				Destroy(gameObject);
-			}
-			else
-			{
-				Singleton = this;
-				InitializedStart();
+				Debug.LogWarning("Argument handler must be the only one.");
+				return;
+				;
 			}
 
-			DontDestroyOnLoad(gameObject);
+			Singleton = this;
 		}
 
-		private void InitializedStart()
+		private void Awake()
 		{
-			countArgs = Environment.GetCommandLineArgs().Length;
-			if (countArgs == 1) return;
-			switch (Environment.GetCommandLineArgs()[1])
-			{
-				case "server":
-					SetPort(countArgs == 2 ? port : Convert.ToInt32(Environment.GetCommandLineArgs()[2]));
-					StartHost();
-					break;
-				case "client":
-					ip = Environment.GetCommandLineArgs()[2];
-					port = Convert.ToInt32(Environment.GetCommandLineArgs()[3]);
-					Connect(ip, port);
-					break;
-				default:
-					throw new ArgumentException("Wrong argument " + Environment.GetCommandLineArgs()[1]);
-			}
+			ParseApplicationArguments();
 		}
 
-		private void Update()
+		private void ParseApplicationArguments()
 		{
-			if (!isStartInUnity) return;
-
-			switch (args)
+			for (var i = 1; i < Environment.GetCommandLineArgs().Length; i++)
 			{
-				case "server":
-					SetPort(port);
-					StartHost();
-					break;
-				case "client":
-					Connect(ip, port);
-					break;
-				default:
-					throw new ArgumentException("Wrong argument " + args);
-			}
-
-			isStartInUnity = false;
-		}
-
-		private static void Connect(string ip, int port)
-		{
-			SetIpAddr(ip);
-			SetPort(port);
-
-			if (NetworkManager.singleton == null)
-			{
-				Debug.LogError("NetworkManager not found");
-			}
-			else
-			{
-				NetworkManager.singleton.StartClient();
+				var arg = Environment.GetCommandLineArgs()[i];
+				var config = arg.Split(Divider);
+				if (config.Length >= 2)
+				{
+					SetValue(config[0], config[1]);
+				}
+				else
+				{
+					SetKey(config[0]);
+				}
 			}
 		}
-
-		private static void SetIpAddr(string ip)
+		
+		public bool ContainsKey(string key)
 		{
-			if (NetworkManager.singleton == null)
-			{
-				Debug.LogError("NetworkManager not found");
-			}
-			else
-			{
-				NetworkManager.singleton.networkAddress = ip;
-			}
+			return configs.Find(x => x.Split(Divider)[0] == key) != null;
 		}
 
-		private static void SetPort(int port)
+		public void SetKey(string key)
 		{
-			if (NetworkManager.singleton == null)
-			{
-				Debug.LogError("NetworkManager not found");
-			}
-			else
-			{
-				NetworkManager.singleton.networkPort = port;
-			}
+			SetValue(key, null);
 		}
 
-		private static void StartHost()
+		public string GetValue(string key)
 		{
-			if (NetworkManager.singleton == null)
-			{
-				Debug.LogError("NetworkManager not found");
-			}
-			else
-			{
-				NetworkManager.singleton.StartHost();
-			}
+			return configs.Find(x => x.Split(Divider)[0] == key).Split(Divider)[1];
 		}
 
-		public void EditorEvent(string args, string ip, int port)
+		public void SetValue(string key, string value)
 		{
-			this.args = args;
-			this.ip = ip;
-			this.port = port;
-			isStartInUnity = true;
+			for (var i = 0; i < configs.Count; i++)
+			{
+				var config = configs[i];
+				if (config.Split(Divider)[0] != key) continue;
+				configs[i] = value == null ? key : key + Divider + value;
+				return;
+			}
+
+			configs.Add(value == null ? key : key + Divider + value);
+		}
+
+		public bool Remove(string key)
+		{
+			string toRemove = null;
+			foreach (var config in configs)
+			{
+				if (config.Split(Divider)[0] == key)
+				{
+					toRemove = config;
+				}
+			}
+
+			return toRemove != null && configs.Remove(toRemove);
 		}
 	}
 }
