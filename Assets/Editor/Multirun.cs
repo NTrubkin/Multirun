@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Text;
-using System.IO;
 using System.Diagnostics;
-using System.Threading;
+using System.IO;
+using System.Text;
 using Trubkin.Util;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -40,7 +40,7 @@ namespace Trubkin.Multirun
 		private const string RunButtonLabel = "Run";
 		private const string BuildRunButtonLabel = "Build and Run";
 		private const string StopButtonLabel = "Stop";
-		
+
 		#endregion
 
 		#region Report Messages
@@ -58,6 +58,8 @@ namespace Trubkin.Multirun
 		private const string OsMsg = "Your OS doesn't supported";
 		private const string SceneNullMsg = "Build stop! scene#{0} is NULL";
 		private const string RunFailMsg = "Can't start process. {0}: {1}";
+		private const string BuildFailMsg = "Can't build project.";
+		private const string SaveFailMsg = "Can't save opened scene";
 
 		#endregion
 
@@ -68,7 +70,7 @@ namespace Trubkin.Multirun
 
 		private const string ExecutionExtension = ".exe";
 		private const string SceneExtension = ".unity";
-		
+
 		private const string ServerArgPattern = "connect=server port={0}";
 		private const string ClientArgPattern = "connect=client ip={0} port={1}";
 
@@ -97,7 +99,6 @@ namespace Trubkin.Multirun
 		[SerializeField] private bool report;
 
 		[SerializeField] private string buildPath = "Build\\";
-
 
 
 		private Vector2 scrollPos; // Память для вертикального скролла
@@ -204,7 +205,7 @@ namespace Trubkin.Multirun
 
 			if (GUILayout.Button(RunButtonLabel))
 			{
-				if(report) ShowRunReport(false);
+				if (report) ShowRunReport(false);
 				Stop();
 				DelayRun();
 			}
@@ -241,7 +242,7 @@ namespace Trubkin.Multirun
 		private void Run()
 		{
 			var serverStarted = false;
-			
+
 			var i = 0;
 			if (runEditor)
 			{
@@ -261,10 +262,9 @@ namespace Trubkin.Multirun
 					proc.StartInfo.Arguments = GetRunArguments(!serverStarted, serverStarted);
 					serverStarted = true;
 				}
-				
+
 				try
 				{
-					
 					proc.Start();
 					processIds.Add(proc.Id);
 				}
@@ -304,7 +304,19 @@ namespace Trubkin.Multirun
 		private void BuildAndRun()
 		{
 			Stop();
-			if (Build()) Run();
+			if (!EditorSceneManager.SaveOpenScenes())
+			{
+				Debug.Log(SaveFailMsg);
+				return;
+			}
+
+			if (!Build())
+			{
+				Debug.Log(BuildFailMsg);
+				return;
+			}
+
+			Run();
 		}
 
 		private void Stop()
@@ -365,14 +377,15 @@ namespace Trubkin.Multirun
 				ArgumentHandler.Singleton.SetValue("connect", "server");
 				ArgumentHandler.Singleton.SetValue("port", port.ToString());
 			}
+
 			if (runClient)
 			{
 				ArgumentHandler.Singleton.SetValue("connect", "client");
 				ArgumentHandler.Singleton.SetValue("ip", ip);
 				ArgumentHandler.Singleton.SetValue("port", port.ToString());
-			} 
+			}
 		}
-		
+
 		private string GetRunArguments(bool runServer, bool runClient)
 		{
 			if (runServer)
@@ -384,7 +397,7 @@ namespace Trubkin.Multirun
 			{
 				return string.Format(ClientArgPattern, ip, port);
 			}
-			
+
 			return "";
 		}
 	}
